@@ -24,23 +24,6 @@ from xuance.environment import RawMultiAgentEnv
 from scripts.other_function import normalization,compute_shortest_distance,is_collision,is_overlap,discretize_circle, discretize_square, discretize_line,compute_outside_length
 class MyNewMultiAgentEnv(RawMultiAgentEnv):
     def __init__(self, env_config):
-        """args parameter:
-        args.embed_dim4neighbor = 8
-        args.num_heads4neighbor = 2
-        args.embed_dim4obs = 4
-        args.num_heads4obs = 2
-        args.max_speed = 5
-        args.max_theta = math.pi / 2
-        args.max_acceleration = 4
-        args.max_ellipse_length = 60  
-        args.min_ellipse_length = 15
-        args.communication_radius = 900
-        args.perception_radius = 90
-        args.col_dis = 5
-        args.decay_gamma = 0.95
-        args.normalization_scale = np.array([-args.max_speed,-args.max_speed,-args.perception_radius,-args.perception_radius,args.max_ellipse_length, args.max_theta])
-        args.normalization_scale4state = np.array([args.max_speed,args.max_speed,-args.communication_radius,-args.communication_radius,args.max_ellipse_length, args.max_theta])
-        """
         super(MyNewMultiAgentEnv, self).__init__()
         # 定义一些无法在yaml中实现的东西
         self.env_config = env_config
