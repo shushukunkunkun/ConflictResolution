@@ -2,7 +2,7 @@
 Author: Shukun
 Date: 2025-03-28 15:44:06
 LastEditors: Shukun
-LastEditTime: 2025-04-17 20:29:19
+LastEditTime: 2025-04-17 20:35:14
 Description: My own environment for project "RL4ConflictResolution" 
 '''
 import math
@@ -315,7 +315,7 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
         return reward
     def update_agents_state(self, action_dict):
         """
-        according to action_dict Update the status of each agent.
+        根据 action_dict 更新每个代理的状态。
         state 格式：[x_vel， y_vel， pos （二维）， L， theta]
         action 格式：（acc， new_L， new_theta）
         """
