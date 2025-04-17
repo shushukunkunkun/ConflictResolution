@@ -1,0 +1,47 @@
+{
+    "os": "Windows-10-10.0.22631-SP0",
+    "python": "3.8.19",
+    "heartbeatAt": "2025-01-02T06:27:11.528628",
+    "startedAt": "2025-01-02T06:27:09.352016",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "c:/Users/pc/Desktop/Python\u5de5\u7a0b\u6587\u4ef6/ConflictResolution/main.py",
+    "codePathLocal": "main.py",
+    "codePath": "main.py",
+    "host": "LAPTOP-JF5DM202",
+    "username": "pc",
+    "executable": "E:\\Anaconda\\envs\\RL4ConflictResolution\\python.exe",
+    "cpu_count": 24,
+    "cpu_count_logical": 32,
+    "cpu_freq": {
+        "current": 2200.0,
+        "min": 0.0,
+        "max": 2200.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2200.0,
+            "min": 0.0,
+            "max": 2200.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 200.00097274780273,
+            "used": 140.2050437927246
+        }
+    },
+    "gpu": "NVIDIA GeForce RTX 4070 Laptop GPU",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 4070 Laptop GPU",
+            "memory_total": 8585740288
+        }
+    ],
+    "memory": {
+        "total": 31.74596405029297
+    }
+}

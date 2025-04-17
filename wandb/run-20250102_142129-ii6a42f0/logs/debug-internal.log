@@ -1,0 +1,65 @@
+2025-01-02 14:21:29,538 INFO    StreamThr :10620 [internal.py:wandb_internal():85] W&B internal server running at pid: 10620, started at: 2025-01-02 14:21:29.537627
+2025-01-02 14:21:29,539 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: status
+2025-01-02 14:21:29,544 INFO    WriterThread:10620 [datastore.py:open_for_write():87] open: C:\Users\pc\Desktop\Python工程文件\ConflictResolution\wandb\run-20250102_142129-ii6a42f0\run-ii6a42f0.wandb
+2025-01-02 14:21:29,545 DEBUG   SenderThread:10620 [sender.py:send():391] send: header
+2025-01-02 14:21:29,545 DEBUG   SenderThread:10620 [sender.py:send():391] send: run
+2025-01-02 14:21:33,536 INFO    SenderThread:10620 [retry.py:__call__():172] Retry attempt failed:
+urllib3.exceptions.SSLError: TLS/SSL connection has been closed (EOF) (_ssl.c:1135)
+
+The above exception was the direct cause of the following exception:
+
+urllib3.exceptions.ProxyError: ('Unable to connect to proxy', SSLError(SSLZeroReturnError(6, 'TLS/SSL connection has been closed (EOF) (_ssl.c:1135)')))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\Anaconda\envs\RL4ConflictResolution\lib\site-packages\requests\adapters.py", line 589, in send
+    resp = conn.urlopen(
+  File "E:\Anaconda\envs\RL4ConflictResolution\lib\site-packages\urllib3\connectionpool.py", line 843, in urlopen
+    retries = retries.increment(
+  File "E:\Anaconda\envs\RL4ConflictResolution\lib\site-packages\urllib3\util\retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.wandb.ai', port=443): Max retries exceeded with url: /graphql (Caused by ProxyError('Unable to connect to proxy', SSLError(SSLZeroReturnError(6, 'TLS/SSL connection has been closed (EOF) (_ssl.c:1135)'))))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\Anaconda\envs\RL4ConflictResolution\lib\site-packages\wandb\sdk\lib\retry.py", line 131, in __call__
+    result = self._call_fn(*args, **kwargs)
+  File "E:\Anaconda\envs\RL4ConflictResolution\lib\site-packages\wandb\sdk\internal\internal_api.py", line 345, in execute
+    return self.client.execute(*args, **kwargs)  # type: ignore
+  File "E:\Anaconda\envs\RL4ConflictResolution\lib\site-packages\wandb\vendor\gql-0.2.0\wandb_gql\client.py", line 52, in execute
+    result = self._get_result(document, *args, **kwargs)
+  File "E:\Anaconda\envs\RL4ConflictResolution\lib\site-packages\wandb\vendor\gql-0.2.0\wandb_gql\client.py", line 60, in _get_result
+    return self.transport.execute(document, *args, **kwargs)
+  File "E:\Anaconda\envs\RL4ConflictResolution\lib\site-packages\wandb\sdk\lib\gql_request.py", line 58, in execute
+    request = self.session.post(self.url, **post_args)
+  File "E:\Anaconda\envs\RL4ConflictResolution\lib\site-packages\requests\sessions.py", line 637, in post
+    return self.request("POST", url, data=data, json=json, **kwargs)
+  File "E:\Anaconda\envs\RL4ConflictResolution\lib\site-packages\requests\sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+  File "E:\Anaconda\envs\RL4ConflictResolution\lib\site-packages\requests\sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+  File "E:\Anaconda\envs\RL4ConflictResolution\lib\site-packages\requests\adapters.py", line 616, in send
+    raise ProxyError(e, request=request)
+requests.exceptions.ProxyError: HTTPSConnectionPool(host='api.wandb.ai', port=443): Max retries exceeded with url: /graphql (Caused by ProxyError('Unable to connect to proxy', SSLError(SSLZeroReturnError(6, 'TLS/SSL connection has been closed (EOF) (_ssl.c:1135)'))))
+2025-01-02 14:21:34,582 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: keepalive
+2025-01-02 14:21:39,617 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: keepalive
+2025-01-02 14:21:44,655 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: keepalive
+2025-01-02 14:21:49,702 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: keepalive
+2025-01-02 14:21:54,754 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: keepalive
+2025-01-02 14:21:59,802 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: keepalive
+2025-01-02 14:22:04,851 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: keepalive
+2025-01-02 14:22:09,892 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: keepalive
+2025-01-02 14:22:14,915 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: keepalive
+2025-01-02 14:22:19,964 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: keepalive
+2025-01-02 14:22:24,996 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: keepalive
+2025-01-02 14:22:30,045 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: keepalive
+2025-01-02 14:22:35,081 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: keepalive
+2025-01-02 14:22:40,119 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: keepalive
+2025-01-02 14:22:45,158 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: keepalive
+2025-01-02 14:22:50,194 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: keepalive
+2025-01-02 14:22:55,234 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: keepalive
+2025-01-02 14:22:59,287 DEBUG   HandlerThread:10620 [handler.py:handle_request():158] handle_request: shutdown
+2025-01-02 14:22:59,287 INFO    HandlerThread:10620 [handler.py:finish():880] shutting down handler
+2025-01-02 14:22:59,404 INFO    WriterThread:10620 [datastore.py:close():296] close: C:\Users\pc\Desktop\Python工程文件\ConflictResolution\wandb\run-20250102_142129-ii6a42f0\run-ii6a42f0.wandb

@@ -1,0 +1,8 @@
+{
+  "notebook.defaultFormatter": "esbenp.prettier-vscode",
+  "python.analysis.extraPaths": [
+    "./basic_class"
+  ],
+  "commentTranslate.multiLineMerge": false,
+  "commentTranslate.source": "Bing"
+}

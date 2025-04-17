@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "c:/Users/pc/Desktop/Python工程文件/ConflictResolution/main.py", line 148, in <module>
+    main()
+  File "c:/Users/pc/Desktop/Python工程文件/ConflictResolution/main.py", line 85, in main
+    env = MultiAgentEnv(args)  # 初始化环境
+  File "c:\Users\pc\Desktop\Python工程文件\ConflictResolution\basic_class\multi_agent_env.py", line 36, in __init__
+    self.agents = [
+  File "c:\Users\pc\Desktop\Python工程文件\ConflictResolution\basic_class\multi_agent_env.py", line 37, in <listcomp>
+    UAVControl(args.method,
+TypeError: UAVControl() takes no arguments
