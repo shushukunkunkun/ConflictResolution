@@ -2,7 +2,7 @@
 Author: Shukun
 Date: 2025-03-28 15:44:06
 LastEditors: Shukun
-LastEditTime: 2025-04-17 20:35:14
+LastEditTime: 2025-04-20 15:22:09
 Description: My own environment for project "RL4ConflictResolution" 
 '''
 import math
@@ -246,7 +246,7 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
         if self.agents_working_state[agent] != 'working':
             return 0
         " (1) Positive rewards for approaching the target"
-        if np.linalg.norm(pos_current - target) <= (self.args.col_dis + 5):
+        if np.linalg.norm(pos_current - target) <= (self.args.col_dis + 15):
             distance_reward = 2000 / normilized_scale
             state = 'success'
         else:
@@ -274,6 +274,7 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
             # collision_penalty = self.args.decay_gamma * collision_penalty_now - collision_penalty_last  # reward shaping
             collision_penalty = collision_penalty_now 
         "(4) Interior collision penalty"
+        "Internal collision penalty should be related to the area of the interaction"
         other_agent = self.nearest_neighbor[agent]
         overlap_penalty = 0
         if other_agent is not None:
@@ -286,9 +287,10 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
             if min_dis_last <= 10:
                 overlap_penalty_last = (-2 *(10 - min_dis_last)**2) / normilized_scale
             overlap_penalty = self.args.decay_gamma * overlap_penalty_now - overlap_penalty_last  # reward shaping
-            if  is_overlap(self.agents_state[agent],self.agents_state[other_agent]) == True:
-                overlap_penalty = -1000 / normilized_scale
-                state = 'dead'
+            overlap, intersection_area = is_overlap(self.agents_state[agent],self.agents_state[other_agent])
+            if  overlap:
+                "If they overlap, the penalties should be added to the penalties related to the charging area"
+                overlap_penalty += -(intersection_area / (900 * np.pi)) * 1000 / normilized_scale
         
         if self.agents_working_state[agent] == 'working':
             reward = alpha * distance_reward + beta * ellipse_change_penalty + gamma * collision_penalty + kappa * overlap_penalty + epsilon * theta_change_penalty

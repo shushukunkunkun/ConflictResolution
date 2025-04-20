@@ -1439,62 +1439,54 @@ def normalization(original_data, scale, addition):
     """
     normalized_data = (addition + original_data) / scale
     return normalized_data
-def is_overlap(agent1,agent2):
-    # 获取第一个椭圆的参数
-    h1, k1 = agent1[2],agent1[3]        # 椭圆1中心
-    a1 = agent1[4]          # 椭圆1半长轴
-    b1 = 900 / a1  # 椭圆1半短轴（由面积公式得来）
-    rot1 = agent1[5]                # 椭圆1旋转角度（弧度）
-    # 获取第二个椭圆的参数
-    h2, k2 = agent2[2],agent2[3]               # 椭圆2中心
-    a2 = agent2[4]           # 椭圆2半长轴
-    b2 = 900 / a2 # 椭圆2半短轴
-    rot2 = agent2[5]               # 椭圆2旋转角度（弧度）
+def is_overlap(agent1, agent2, num_samples=200):
+    # ——— 提取椭圆参数 ———
+    h1, k1, a1, rot1 = agent1[2], agent1[3], agent1[4], agent1[5]
+    b1 = 900 / a1
+    h2, k2, a2, rot2 = agent2[2], agent2[3], agent2[4], agent2[5]
+    b2 = 900 / a2
 
-    # 计算旋转椭圆的外接矩形：半宽和半高
-    # 半宽 = sqrt(a^2*cos^2(theta) + b^2*sin^2(theta))
-    # 半高 = sqrt(a^2*sin^2(theta) + b^2*cos^2(theta))
-    half_width1 = np.sqrt(a1**2 * np.cos(rot1)**2 + b1**2 * np.sin(rot1)**2)
-    half_height1 = np.sqrt(a1**2 * np.sin(rot1)**2 + b1**2 * np.cos(rot1)**2)
-    half_width2 = np.sqrt(a2**2 * np.cos(rot2)**2 + b2**2 * np.sin(rot2)**2)
-    half_height2 = np.sqrt(a2**2 * np.sin(rot2)**2 + b2**2 * np.cos(rot2)**2)
+    # ——— 计算旋转椭圆外接矩形半宽半高 ———
+    half_w1 = np.sqrt(a1**2 * np.cos(rot1)**2 + b1**2 * np.sin(rot1)**2)
+    half_h1 = np.sqrt(a1**2 * np.sin(rot1)**2 + b1**2 * np.cos(rot1)**2)
+    half_w2 = np.sqrt(a2**2 * np.cos(rot2)**2 + b2**2 * np.sin(rot2)**2)
+    half_h2 = np.sqrt(a2**2 * np.sin(rot2)**2 + b2**2 * np.cos(rot2)**2)
 
-    # 计算两个外接矩形的重叠区域
-    x_min = max(h1 - half_width1, h2 - half_width2)
-    x_max = min(h1 + half_width1, h2 + half_width2)
-    y_min = max(k1 - half_height1, k2 - half_height2)
-    y_max = min(k1 + half_height1, k2 + half_height2)
+    # ——— 外接矩形重叠区间 ———
+    x_min = max(h1 - half_w1, h2 - half_w2)
+    x_max = min(h1 + half_w1, h2 + half_w2)
+    y_min = max(k1 - half_h1, k2 - half_h2)
+    y_max = min(k1 + half_h1, k2 + half_h2)
 
-    # 如果外接矩形不重叠，则椭圆必定不重叠
+    # 如果矩形不重叠，直接返回
     if x_min >= x_max or y_min >= y_max:
-        return False
+        return False, 0.0
 
-    # 在重叠区域内创建采样网格
-    num_samples = 100  # 采样点数
-    x_samples = np.linspace(x_min, x_max, num_samples)
-    y_samples = np.linspace(y_min, y_max, num_samples)
-    xv, yv = np.meshgrid(x_samples, y_samples)
-    xv_flat = xv.flatten()
-    yv_flat = yv.flatten()
+    # 划网格采样
+    xs = np.linspace(x_min, x_max, num_samples)
+    ys = np.linspace(y_min, y_max, num_samples)
+    xv, yv = np.meshgrid(xs, ys)
+    xv_flat, yv_flat = xv.ravel(), yv.ravel()
 
-    # 定义一个函数，用来计算旋转椭圆的标准椭圆方程值
-    # 对于椭圆，局部坐标 (X',Y') 定义为：
-    #   X' = (x-h)*cos(theta) + (y-k)*sin(theta)
-    #   Y' = -(x-h)*sin(theta) + (y-k)*cos(theta)
-    # 标准椭圆方程为： (X'/a)^2 + (Y'/b)^2
-    def ellipse_lhs(x, y, h, k, a, b, theta):
-        X_prime = (x - h) * np.cos(theta) + (y - k) * np.sin(theta)
-        Y_prime = -(x - h) * np.sin(theta) + (y - k) * np.cos(theta)
-        return (X_prime / a)**2 + (Y_prime / b)**2
+    # 椭圆方程左侧计算函数
+    def lhs(x, y, h, k, a, b, theta):
+        Xp = (x - h) * np.cos(theta) + (y - k) * np.sin(theta)
+        Yp = -(x - h) * np.sin(theta) + (y - k) * np.cos(theta)
+        return (Xp/a)**2 + (Yp/b)**2
 
-    # 计算每个采样点在两个椭圆中的值
-    lhs1 = ellipse_lhs(xv_flat, yv_flat, h1, k1, a1, b1, rot1)
-    lhs2 = ellipse_lhs(xv_flat, yv_flat, h2, k2, a2, b2, rot2)
+    # 计算每点是否在两椭圆内
+    lhs1 = lhs(xv_flat, yv_flat, h1, k1, a1, b1, rot1)
+    lhs2 = lhs(xv_flat, yv_flat, h2, k2, a2, b2, rot2)
+    mask = (lhs1 <= 1) & (lhs2 <= 1)
+    n_overlap = np.count_nonzero(mask)
 
-    # 判断是否存在同时位于两个椭圆内的点（值<=1表示在椭圆内）
-    overlap = np.any((lhs1 <= 1) & (lhs2 <= 1))
+    # 计算单个网格单元面积
+    cell_area = ((x_max - x_min) / (num_samples - 1)) * ((y_max - y_min) / (num_samples - 1))
+    intersection_area = n_overlap * cell_area
 
-    return overlap
+    # overlap: 是否有交集；intersection_area: 交集面积近似
+    overlap = n_overlap > 0
+    return overlap, intersection_area
 def is_collision(agent1, obstacle_coor):
         cx, cy = agent1[2],agent1[3]
         # 椭圆的长轴半径和短轴半径
