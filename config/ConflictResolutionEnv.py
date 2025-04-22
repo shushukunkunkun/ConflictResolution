@@ -2,7 +2,7 @@
 Author: Shukun
 Date: 2025-03-28 15:44:06
 LastEditors: Shukun
-LastEditTime: 2025-04-22 17:11:23
+LastEditTime: 2025-04-22 17:16:43
 Description: My own environment for project "RL4ConflictResolution" 
 '''
 import math
@@ -345,7 +345,7 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
         """
         Renders the current state of the environment, drawing obstacles, each agent's ellipse, and its target point (color-consistent).
 
-Request:
+        Request:
         - self.args.obstacle_coor: NumPy array, shaped (n, 2), representing obstacle coordinates.
         - self.args.target_point: A list or array, each element is a [x, y] coordinate, and the target point corresponds to the agent.
         - self.agents_state: A dictionary with the state of each agent as a one-dimensional NumPy array, where:

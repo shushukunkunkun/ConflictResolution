@@ -104,17 +104,10 @@ class UAVControlBase:
         w_acc = 0  # 加速度权重
         w_length = 10  # 椭圆长轴变化权重
         w_theta = 1000 # 椭圆角度变化权重
-<<<<<<< HEAD
         w_obs = -3000 # 外部避障惩罚权重
         w_n = -10000 # 内部避碰权重
         w_round = 0.5 #尽量保持为圆
         d_obs = 2.0  # 避碰安全距离
-=======
-        w_obs = -5000 # 外部避障惩罚权重
-        w_n = -10000 # 内部避碰权重
-        w_round = 0.5 #尽量保持为圆
-        d_obs = 8.0  # 避碰安全距离
->>>>>>> a635ff0d0cba675bdca5e42d6d7797f6b6a92998
         d_n = 10 # 内部避碰距离
         s_obs_des = 25
         s_n_des = 10
