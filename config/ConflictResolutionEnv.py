@@ -2,7 +2,7 @@
 Author: Shukun
 Date: 2025-03-28 15:44:06
 LastEditors: Shukun
-LastEditTime: 2025-04-22 12:28:33
+LastEditTime: 2025-04-22 17:11:23
 Description: My own environment for project "RL4ConflictResolution" 
 '''
 import math
