@@ -2,7 +2,7 @@
 Author: Shukun
 Date: 2025-03-28 15:44:06
 LastEditors: Shukun
-LastEditTime: 2025-04-22 17:16:43
+LastEditTime: 2025-04-22 21:41:09
 Description: My own environment for project "RL4ConflictResolution" 
 '''
 import math
@@ -256,9 +256,9 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
         "(2) Elliptical planning deformation penalty"
         # ellipse_change_penalty = -10 * abs(ellipse_length_current - ellipse_length_last) / normilized_scale
         ellipse_change_penalty_now = -abs(ellipse_length_current - (900/ellipse_length_current))/45
-        # ellipse_change_penalty_last = -abs(ellipse_length_last - (900/ellipse_length_last))/45
-        # ellipse_change_penalty = self.args.decay_gamma * ellipse_change_penalty_now - ellipse_change_penalty_last  # reward shaping
-        ellipse_change_penalty = ellipse_change_penalty_now
+        ellipse_change_penalty_last = -abs(ellipse_length_last - (900/ellipse_length_last))/45
+        ellipse_change_penalty = self.args.decay_gamma * ellipse_change_penalty_now - ellipse_change_penalty_last  # reward shaping
+        # ellipse_change_penalty = ellipse_change_penalty_now
         theta_change_penalty = -2*((theta_current - theta_last)**2)
         
         "(3) Outside collision penalty"
@@ -266,14 +266,14 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
         collision_penalty_last = 0
         if dis2obstacle  <= 10:
             collision_penalty_now = -1*((10 - dis2obstacle)**2) / normilized_scale
-        # if last_dis2obstacle <= 10:
-        #     collision_penalty_last = (-1 * (10 - last_dis2obstacle)**2) / normilized_scale
+        if last_dis2obstacle <= 10:
+            collision_penalty_last = (-1 * (10 - last_dis2obstacle)**2) / normilized_scale
         if  is_collision(self.agents_state[agent],self.args.obstacle_coor) == True:
             collision_penalty = -2000 / normilized_scale
             state = 'dead'
         else:
-            # collision_penalty = self.args.decay_gamma * collision_penalty_now - collision_penalty_last  # reward shaping
-            collision_penalty = collision_penalty_now 
+            collision_penalty = self.args.decay_gamma * collision_penalty_now - collision_penalty_last  # reward shaping
+            # collision_penalty = collision_penalty_now 
         "(4) Interior collision penalty"
         "Internal collision penalty should be related to the area of the interaction"
         other_agent = self.nearest_neighbor[agent]
@@ -291,7 +291,8 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
             overlap, intersection_area = is_overlap(self.agents_state[agent],self.agents_state[other_agent])
             if  overlap:
                 "If they overlap, the penalties should be added to the penalties related to the charging area"
-                overlap_penalty += -(intersection_area / (900 * np.pi)) * 1000 / normilized_scale
+                # overlap_penalty += -(intersection_area / (900 * np.pi)) * 1000 / normilized_scale
+                overlap_penalty = -1
         
         if self.agents_working_state[agent] == 'working':
             reward = alpha * distance_reward + beta * ellipse_change_penalty + gamma * collision_penalty + kappa * overlap_penalty + epsilon * theta_change_penalty

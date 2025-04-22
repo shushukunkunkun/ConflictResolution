@@ -41,7 +41,7 @@ use_parameter_sharing: True
 use_actions_mask: False
 
 seed: 1
-parallels: 1
+parallels: 64
 buffer_size: 100000
 batch_size: 2048
 learning_rate_actor: 0.01 # learning rate for actor
@@ -51,7 +51,7 @@ tau: 0.001 # soft update for target networks
 alpha: 0.01
 use_automatic_entropy_tuning: True
 
-start_training: 1000000 # start training after n steps
+start_training: 10000 # start training after n steps
 running_steps: 5000000
 training_frequency: 25
 
@@ -65,7 +65,8 @@ model_dir: './models/masac/'
 
 IL_mode: True
 IL_replay_buffer_dir: './scripts/IL_replay_buffer'
-IL_data: 'rewards343.3858.json'
+IL_data: 'rewards1000.json'
+rep_factor: 10
 # my own env parameter
 args:
   embed_dim4neighbor: 8
