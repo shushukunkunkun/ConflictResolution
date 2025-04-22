@@ -2,7 +2,7 @@
 Author: Shukun
 Date: 2024-12-30 18:36:04
 LastEditors: Shukun
-LastEditTime: 2025-04-15 20:44:58
+LastEditTime: 2025-04-22 13:15:28
 Description: Decentralized MPC + MARL
 '''
 import os
@@ -29,7 +29,7 @@ class Args:
         # 公有基础属性
         self.method = method
         self.n_episodes = 1
-        self.max_episode_len = 800  # 单次训练最多步数
+        self.max_episode_len = 1200  # 单次训练最多步数
         self.train_step = 0
         self.buffer_size = 20000  # 设置经验回放缓冲区的大小
         self.batch_size = 128  # 设置从缓冲区中抽取的批次大小
@@ -119,8 +119,9 @@ def main():
                     this_episode_step = step
                     break
             # 数据预处理
+        
             episode_data = preprocessing_episode_data(args, episode_data,
-                                                      episode_rewards)
+                                                    episode_rewards)
             replay_buffer.store(episode_data)
             # 在经验缓冲区中有足够的样本后，才开始训练
             if replay_buffer.size() >= args.batch_size:

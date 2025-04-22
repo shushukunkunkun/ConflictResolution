@@ -2,7 +2,7 @@
 Author: Shukun
 Date: 2025-03-28 15:44:06
 LastEditors: Shukun
-LastEditTime: 2025-04-20 15:22:09
+LastEditTime: 2025-04-22 12:28:33
 Description: My own environment for project "RL4ConflictResolution" 
 '''
 import math
@@ -170,6 +170,7 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
             # # 使用障碍物注意力网络进行前向传播，输出形状为 (1, 2)
             # aggregated_obs = self.obs_attentionnetwork(obstacle_tensor)
             # 将输出转换为 NumPy 数组，并去除 batch 维度
+            self.agents_last_dis2obs[agent] = self.agents_dis2obs[agent]
             self.agents_dis2obs[agent] = min_obs_distance
             self.obs_state[agent] = obstacle_state
             # aggregated_obs.squeeze(0).detach().cpu().numpy()
@@ -246,7 +247,7 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
         if self.agents_working_state[agent] != 'working':
             return 0
         " (1) Positive rewards for approaching the target"
-        if np.linalg.norm(pos_current - target) <= (self.args.col_dis + 15):
+        if np.linalg.norm(pos_current - target) <= (self.args.col_dis + 25):
             distance_reward = 2000 / normilized_scale
             state = 'success'
         else:
@@ -314,6 +315,8 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
         self.agents_last_state = self.agents_state.copy()
         dt = self.sampling_time  # 采样时间
         for agent in self.agents:
+            if self.agents_working_state[agent] == 'success':
+                self.agents_state[agent][:2] = np.array([0,0])
             if self.agents_working_state[agent] != 'working':
                 continue
             acc_x, acc_y , new_L, new_theta = action_dict[agent]
@@ -337,7 +340,6 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
                 new_pos,
                 np.array([new_L, new_theta])
             ))
-            
             self.agents_state[agent] = new_state
     def render(self, mode='human', close=False):
         """

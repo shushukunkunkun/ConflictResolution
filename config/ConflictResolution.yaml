@@ -2,10 +2,10 @@ dl_toolbox: 'torch' # The deep learning toolbox. Choices: "torch", "mindspore", 
 project_name: 'XuanCe_Benchmark'
 logger: 'wandb' # Choices: tensorboard, wandb.
 wandb_user_name: 'shushukunkunkun'
-render:   False #  True False
+render: False #  True False
 render_mode: 'rgb_array' # Choices: 'human', 'rgb_array'.
 fps: 50
-test_mode:  False # True False
+test_mode: False # True False
 device: 'cuda:0' # Choose an calculating device. PyTorch: "cpu", "cuda:0"; TensorFlow: "cpu"/"CPU", "gpu"/"GPU"; MindSpore: "CPU", "GPU", "Ascend", "Davinci".
 distributed_training: False # Whether to use multi-GPU for distributed training.
 master_port: '12355' # The master port for current experiment when use distributed training.
@@ -20,7 +20,7 @@ policy: 'Gaussian_MASAC_Policy'
 representation: 'Basic_Identical'
 vectorize: 'SubprocVecMultiAgentEnv'
 runner: 'MARL'
-legacy: True # True False
+legacy: False # True False
 # recurrent settings for Basic_RNN representation.
 use_rnn: False # If to use recurrent neural network as representation. (The representation should be "Basic_RNN").
 rnn: 'GRU' # The type of recurrent layer.
@@ -41,8 +41,8 @@ use_parameter_sharing: True
 use_actions_mask: False
 
 seed: 1
-parallels: 32
-buffer_size: 100000000
+parallels: 1
+buffer_size: 100000
 batch_size: 2048
 learning_rate_actor: 0.01 # learning rate for actor
 learning_rate_critic: 0.001 # learning rate for critic
@@ -51,7 +51,7 @@ tau: 0.001 # soft update for target networks
 alpha: 0.01
 use_automatic_entropy_tuning: True
 
-start_training: 10000 # start training after n steps
+start_training: 1000000 # start training after n steps
 running_steps: 5000000
 training_frequency: 25
 
@@ -62,6 +62,10 @@ test_episode: 5
 
 log_dir: './logs/masac/'
 model_dir: './models/masac/'
+
+IL_mode: True
+IL_replay_buffer_dir: './scripts/IL_replay_buffer'
+IL_data: 'rewards343.3858.json'
 # my own env parameter
 args:
   embed_dim4neighbor: 8

@@ -4,6 +4,7 @@ import math
 import random
 import os
 import time
+from typing import Dict
 from shapely.geometry import LineString, Polygon, Point, MultiPolygon
 import numpy as np
 from matplotlib import pyplot as plt, animation
@@ -1211,14 +1212,15 @@ def initialization_before_each_episode(args, env, episode, network=None):
         # network
         # 初始化每个 episode 的存储结构
         episode_data = {
-            "s": [],
-            "s_next": [],
-            "o": [],
-            "o_next": [],
-            "u": [],
-            "r": [],
-            "terminated": [],
-            "padded": [],
+            "s": [], #这个s是为了绘图
+            "state": [],
+            "state_next": [],
+            "obs": [],
+            "obs_next": [],
+            "actions": [],
+            "rewards": [],
+            "terminals": [],
+            "agent_mask": []
         }
         ## Public work
         # epsilon_decay
@@ -1262,6 +1264,18 @@ def get_each_agent_data(args, agent_id, action, actions, other_agents_data):
         print('Oops something went wrong!')
     return actions, other_agents_data
 
+def normalize_true_actions(true_actions):
+    """
+    将 true_actions（每个元素 shape=(4,)）从 [low,high] 映射到 [0,1]。
+    """
+    low  = np.array([-4.0, -4.0, 15.0, -math.pi/2], dtype=np.float32)
+    high = np.array([ 4.0,  4.0, 60.0,  math.pi/2], dtype=np.float32)
+    normalized = []
+    for act in true_actions:
+        # (act - low) / (high - low) -> [0,1]
+        norm = (act - low) / (high - low)
+        normalized.append(norm.astype(np.float32))
+    return normalized
 
 def step_and_collation_episode_data(args, episode_data, env, actions,
                                     other_agents_data):
@@ -1293,22 +1307,43 @@ def step_and_collation_episode_data(args, episode_data, env, actions,
         episode_rewards += sum(rewards)
     elif args.method == 'None':
         """
-            TODO
-            the action type of tradtional_method is not the index of the action space
-            it is the true input
+            TODO 在这里获取episode的所有属性数据均在env中完成
+            1.修改env.get_global_state()
+            2.修改计算rewards
+            3.修改agent.get_state() 并通过调用agent.get_state() 更新agent_obs
         """
-        episode_data["s"].append(env.get_global_state())
+        episode_data["s"].append(env.get_global_state4draw()) 
+        episode_data["state"].append(env.get_global_state())
+        episode_data["obs"].append({agent: env.agents_obs[agent] for agent in env.uavs})
         next_state, rewards, done = env.step(actions,
                                              args.gamma)  # 环境步进在CPU上进行
-        episode_rewards += sum(rewards)
-        episode_data["s_next"].append(env.get_global_state())
-        episode_data["o"].append([agent.get_state() for agent in env.agents])
-        episode_data["o_next"].append(
-            [next_agent_state for next_agent_state in next_state])
-        episode_data["u"].append(actions)
-        episode_data["r"].append(rewards)
-        episode_data["terminated"].append([done] * args.n_agents)
-        episode_data["padded"].append([0] * args.n_agents)
+        # TODO 更新env.agents_state[agent]
+        env.agents_last_state = env.agents_state.copy()
+        env.agents_state = {
+            agent:
+                # 如果该 agent 处于 success，就把速度置零，否则用真实速度
+                np.concatenate((
+                    np.array([0, 0]),
+                    env.agents[i].position,
+                    np.array([env.agents[i].ellipse_length, env.agents[i].theta])
+                )) if env.agents_working_state[agent] == 'success'
+                else np.concatenate((
+                    env.agents[i].velocity,
+                    env.agents[i].position,
+                    np.array([env.agents[i].ellipse_length, env.agents[i].theta])
+                ))
+            for i, agent in enumerate(env.uavs)
+        }
+        env.pay_attention() #更新了obs_state,neighbor_state
+        env.agents_obs = {agent: np.concatenate((np.array(normalization(env.agents_state[agent], env.normalization_scale4state, np.array([0,0,-env.target_point[i][0],-env.target_point[i][1],0,0]))),env.neighbor_state[agent],env.obs_state[agent])) for i,agent in enumerate(env.uavs)}
+        
+        episode_data["state_next"].append(env.get_global_state())
+        episode_data["obs_next"].append({agent: env.agents_obs[agent] for agent in env.uavs})
+        trans_actions = normalize_true_actions(actions)
+        episode_data["actions"].append({agent: trans_actions[i] for (i,agent) in enumerate(env.uavs)})
+        episode_data["rewards"].append({agent: rewards[i] for (i,agent) in enumerate(env.uavs)})
+        episode_data["terminals"].append( {agent: True if env.agents_working_state[agent] != 'working' else False for agent in env.uavs})
+        episode_data["agent_mask"].append({agent: True for agent in env.uavs})
     return episode_data, episode_rewards, done
 
 
@@ -1505,3 +1540,57 @@ def is_collision(agent1, obstacle_coor):
             if (x_local**2) / (a**2) + (y_local**2) / (b**2) <= 1:
                 return True  # 障碍物在椭圆内部
         return False
+def fill_offpolicy_buffer(memory, 
+                          obs_all: Dict[str, np.ndarray],
+                          actions_all: Dict[str, np.ndarray],
+                          obs_next_all: Dict[str, np.ndarray],
+                          rewards_all: Dict[str, np.ndarray],
+                          terminals_all: Dict[str, np.ndarray],
+                          agent_mask_all: Dict[str, np.ndarray],
+                          state_all: np.ndarray = None,
+                          state_next_all: np.ndarray = None,
+                          avail_actions_all: Dict[str, np.ndarray] = None,
+                          avail_actions_next_all: Dict[str, np.ndarray] = None):
+    """
+    直接填充 MARL_OffPolicyBuffer.data。
+
+    参数:
+      memory: 已初始化的 MARL_OffPolicyBuffer 实例
+      obs_all: dict, 每个 agent 的 obs 数组, shape=(n_envs, T, obs_dim)
+      actions_all: dict, 每个 agent 的 action 数组, shape=(n_envs, T, act_dim)
+      obs_next_all: dict, 每个 agent 的 next_obs 数组, shape=(n_envs, T, obs_dim)
+      rewards_all: dict, 每个 agent 的 rewards 数组, shape=(n_envs, T)
+      terminals_all: dict, 每个 agent 的 done 数组 (bool), shape=(n_envs, T)
+      agent_mask_all: dict, 每个 agent 的 mask 数组 (bool), shape=(n_envs, T)
+      state_all: 全局状态数组, shape=(n_envs, T, state_dim) 或 None
+      state_next_all: 全局 next_state 数组, shape=(n_envs, T, state_dim) 或 None
+      avail_actions_all: dict, 每个 agent 的 avail_actions 数组 (bool), shape=(n_envs, T, act_dim)
+      avail_actions_next_all: dict, 每个 agent 的 avail_actions_next 数组 (bool), shape=(n_envs, T, act_dim)
+    """
+    # 1) 确定要填充多少个时间步 T（不得超过 buffer_size）
+    #    这里假设所有输入数组的 T 维都是一致的
+    any_agent = next(iter(obs_all))
+    n_envs, T, _ = obs_all[any_agent].shape
+    assert T <= memory.n_size, "离线数据时间步 T 不得大于 buffer_size"
+
+    # 2) 逐字段写入底层 memory.data
+    for k in memory.agent_keys:
+        memory.data['obs'][k][:, :T]        = obs_all[k]
+        memory.data['actions'][k][:, :T]    = actions_all[k]
+        memory.data['obs_next'][k][:, :T]   = obs_next_all[k]
+        memory.data['rewards'][k][:, :T]    = rewards_all[k]
+        memory.data['terminals'][k][:, :T]  = terminals_all[k]
+        memory.data['agent_mask'][k][:, :T] = agent_mask_all[k]
+
+        if memory.use_actions_mask:
+            memory.data['avail_actions'][k][:, :T]      = avail_actions_all[k]
+            memory.data['avail_actions_next'][k][:, :T] = avail_actions_next_all[k]
+
+    if memory.store_global_state:
+        # state_all 和 state_next_all:  shape=(n_envs, T, state_dim)
+        memory.data['state']     [:, :T] = state_all
+        memory.data['state_next'][:, :T] = state_next_all
+
+    # 3) 更新指针与大小
+    memory.size = T
+    memory.ptr  = T % memory.n_size

@@ -69,7 +69,7 @@ class UAVControlBase:
         self.epsilon = epsilon
         self.device = device
         # 传统方法属性
-        self.sampling_time = float(1)  # 采样时间
+        self.sampling_time = float(0.2)  # 采样时间
         self.horizon = 5  # MPC的预测序列长度
         self.traditional_acceleration = np.zeros(2, dtype=float)
         self.traditional_length = np.zeros(2, dtype=float)
@@ -100,14 +100,14 @@ class UAVControlBase:
         # ============ 参数设置 ============
         H = self.horizon  # 预测时域长度
         dt = self.sampling_time  # 离散时间步
-        w_pos = 0.5  # 位置误差权
+        w_pos = 0.6  # 位置误差权
         w_acc = 0  # 加速度权重
         w_length = 10  # 椭圆长轴变化权重
         w_theta = 1000 # 椭圆角度变化权重
-        w_obs = -5000 # 外部避障惩罚权重
+        w_obs = -3000 # 外部避障惩罚权重
         w_n = -10000 # 内部避碰权重
         w_round = 0.5 #尽量保持为圆
-        d_obs = 8.0  # 避碰安全距离
+        d_obs = 2.0  # 避碰安全距离
         d_n = 10 # 内部避碰距离
         s_obs_des = 25
         s_n_des = 10
@@ -789,7 +789,6 @@ class UAVControlIL(UAVControlBase):
                       step=None,
                       all_agents=None):
         return self.calculate_action(all_agents)
-
 
 class UAVControl:
 
