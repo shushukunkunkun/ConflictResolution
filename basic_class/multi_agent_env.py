@@ -375,7 +375,7 @@ class MultiAgentEnv:
             dis2obstacle = self.agents_dis2obs[agent]
             last_dis2obstacle = self.agents_last_dis2obs[agent]
             target = self.target_point[index].flatten() if hasattr(self.target_point[index], 'flatten') else self.target_point[index]
-            alpha, beta, gamma, kappa, epsilon = 1, 1, 1, 1, 1  # 奖励权重
+            alpha, beta, gamma, kappa, epsilon = 1, 1.5, 1, 1, 1  # 奖励权重
             normilized_scale = 100
             if self.agents_working_state[agent] != 'working':
                 return 0
@@ -387,6 +387,7 @@ class MultiAgentEnv:
                 distance_to_target = np.linalg.norm(pos_current - target)
                 distance_reward = 100 * (np.linalg.norm(pos_last - target) - distance_to_target) / normilized_scale
             "(2) Elliptical planning deformation penalty"
+           
             # ellipse_change_penalty = -10 * abs(ellipse_length_current - ellipse_length_last) / normilized_scale
             ellipse_change_penalty_now = -abs(ellipse_length_current - (900/ellipse_length_current))/45
             ellipse_change_penalty_last = -abs(ellipse_length_last - (900/ellipse_length_last))/45
@@ -412,20 +413,20 @@ class MultiAgentEnv:
             other_agent = self.nearest_neighbor[agent]
             overlap_penalty = 0
             if other_agent is not None:
-                min_dis_now = compute_shortest_distance(self.agents_state[agent], self.agents_state[other_agent])
-                min_dis_last = compute_shortest_distance(self.agents_last_state[agent], self.agents_last_state[other_agent])
-                overlap_penalty_last = 0
-                overlap_penalty_now = 0
-                if min_dis_now <= 10:
-                    overlap_penalty_now = (-2 *(10 - min_dis_now)**2) / normilized_scale
-                if min_dis_last <= 10:
-                    overlap_penalty_last = (-2 *(10 - min_dis_last)**2) / normilized_scale
-                overlap_penalty = self.decay_gamma * overlap_penalty_now - overlap_penalty_last  # reward shaping
+                # min_dis_now = compute_shortest_distance(self.agents_state[agent], self.agents_state[other_agent])
+                # min_dis_last = compute_shortest_distance(self.agents_last_state[agent], self.agents_last_state[other_agent])
+                # overlap_penalty_last = 0
+                # overlap_penalty_now = 0
+                # if min_dis_now <= 10:
+                #     overlap_penalty_now = (-2 *(10 - min_dis_now)**2) / normilized_scale
+                # if min_dis_last <= 10:
+                #     overlap_penalty_last = (-2 *(10 - min_dis_last)**2) / normilized_scale
+                # overlap_penalty = self.decay_gamma * overlap_penalty_now - overlap_penalty_last  # reward shaping
                 overlap, intersection_area = is_overlap(self.agents_state[agent],self.agents_state[other_agent])
                 if  overlap:
                     "If they overlap, the penalties should be added to the penalties related to the charging area"
-                    # overlap_penalty += -(intersection_area / (900 * np.pi)) * 1000 / normilized_scale
-                    overlap_penalty = -1
+                    overlap_penalty = -(intersection_area / (900 * np.pi)) * 500 / normilized_scale
+                    # overlap_penalty = -1
             if self.agents_working_state[agent] == 'working':
                 reward = alpha * distance_reward + beta * ellipse_change_penalty + gamma * collision_penalty + kappa * overlap_penalty + epsilon * theta_change_penalty
             else:
