@@ -2,7 +2,7 @@
 Author: Shukun
 Date: 2025-03-28 15:44:06
 LastEditors: Shukun
-LastEditTime: 2025-04-22 21:41:09
+LastEditTime: 2025-04-24 16:12:55
 Description: My own environment for project "RL4ConflictResolution" 
 '''
 import math
@@ -90,7 +90,7 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
             )
             for agent in self.agents
         }
-        self.max_episode_steps = 800
+        self.max_episode_steps = 1000
         self.sampling_time = float(0.2)
         self._current_step = 0
         self.attention = env_config.attention
@@ -242,7 +242,7 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
         dis2obstacle = self.agents_dis2obs[agent]
         last_dis2obstacle = self.agents_last_dis2obs[agent]
         target = self.args.target_point[index].flatten() if hasattr(self.args.target_point[index], 'flatten') else self.args.target_point[index]
-        alpha, beta, gamma, kappa, epsilon = 1, 1, 1, 1, 1  # 奖励权重
+        alpha, beta, gamma, kappa, epsilon = 1, 1.5, 1, 1, 1  # 奖励权重
         normilized_scale = 100
         if self.agents_working_state[agent] != 'working':
             return 0
@@ -258,6 +258,7 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
         ellipse_change_penalty_now = -abs(ellipse_length_current - (900/ellipse_length_current))/45
         ellipse_change_penalty_last = -abs(ellipse_length_last - (900/ellipse_length_last))/45
         ellipse_change_penalty = self.args.decay_gamma * ellipse_change_penalty_now - ellipse_change_penalty_last  # reward shaping
+        
         # ellipse_change_penalty = ellipse_change_penalty_now
         theta_change_penalty = -2*((theta_current - theta_last)**2)
         
@@ -279,20 +280,20 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
         other_agent = self.nearest_neighbor[agent]
         overlap_penalty = 0
         if other_agent is not None:
-            min_dis_now = compute_shortest_distance(self.agents_state[agent], self.agents_state[other_agent])
-            min_dis_last = compute_shortest_distance(self.agents_last_state[agent], self.agents_last_state[other_agent])
-            overlap_penalty_last = 0
-            overlap_penalty_now = 0
-            if min_dis_now <= 10:
-                overlap_penalty_now = (-2 *(10 - min_dis_now)**2) / normilized_scale
-            if min_dis_last <= 10:
-                overlap_penalty_last = (-2 *(10 - min_dis_last)**2) / normilized_scale
-            overlap_penalty = self.args.decay_gamma * overlap_penalty_now - overlap_penalty_last  # reward shaping
+            # min_dis_now = compute_shortest_distance(self.agents_state[agent], self.agents_state[other_agent])
+            # min_dis_last = compute_shortest_distance(self.agents_last_state[agent], self.agents_last_state[other_agent])
+            # overlap_penalty_last = 0
+            # overlap_penalty_now = 0
+            # if min_dis_now <= 10:
+            #     overlap_penalty_now = (-2 *(10 - min_dis_now)**2) / normilized_scale
+            # if min_dis_last <= 10:
+            #     overlap_penalty_last = (-2 *(10 - min_dis_last)**2) / normilized_scale
+            # overlap_penalty = self.args.decay_gamma * overlap_penalty_now - overlap_penalty_last  # reward shaping
             overlap, intersection_area = is_overlap(self.agents_state[agent],self.agents_state[other_agent])
             if  overlap:
                 "If they overlap, the penalties should be added to the penalties related to the charging area"
-                # overlap_penalty += -(intersection_area / (900 * np.pi)) * 1000 / normilized_scale
-                overlap_penalty = -1
+                overlap_penalty = -(intersection_area / (900 * np.pi)) * 500 / normilized_scale
+                # overlap_penalty = -1
         
         if self.agents_working_state[agent] == 'working':
             reward = alpha * distance_reward + beta * ellipse_change_penalty + gamma * collision_penalty + kappa * overlap_penalty + epsilon * theta_change_penalty
