@@ -2,10 +2,10 @@ dl_toolbox: 'torch' # The deep learning toolbox. Choices: "torch", "mindspore", 
 project_name: 'XuanCe_Benchmark'
 logger: 'wandb' # Choices: tensorboard, wandb.
 wandb_user_name: 'shushukunkunkun'
-render: False #  True False
+render: True #  True False
 render_mode: 'rgb_array' # Choices: 'human', 'rgb_array'.
 fps: 50
-test_mode: False # True False
+test_mode: True # True False
 device: 'cuda:0' # Choose an calculating device. PyTorch: "cpu", "cuda:0"; TensorFlow: "cpu"/"CPU", "gpu"/"GPU"; MindSpore: "CPU", "GPU", "Ascend", "Davinci".
 distributed_training: False # Whether to use multi-GPU for distributed training.
 master_port: '12355' # The master port for current experiment when use distributed training.
@@ -20,7 +20,7 @@ policy: 'Gaussian_MASAC_Policy'
 representation: 'Basic_Identical'
 vectorize: 'SubprocVecMultiAgentEnv'
 runner: 'MARL'
-legacy: False # True False
+legacy: True # True False
 # recurrent settings for Basic_RNN representation.
 use_rnn: False # If to use recurrent neural network as representation. (The representation should be "Basic_RNN").
 rnn: 'GRU' # The type of recurrent layer.
@@ -43,21 +43,21 @@ use_actions_mask: False
 seed: 1
 parallels: 64
 buffer_size: 6400000
-batch_size: 2048
-learning_rate_actor: 0.01 # learning rate for actor
-learning_rate_critic: 0.001 # learning rate for critic
+batch_size: 4096
+learning_rate_actor: 0.001 # learning rate for actor
+learning_rate_critic: 0.0001 # learning rate for critic
 gamma: 0.95 # discount factor
 tau: 0.001 # soft update for target networks
 alpha: 0.01
 use_automatic_entropy_tuning: True
 
 start_training: 10000 # start training after n steps
-running_steps: 5000000
+running_steps: 1000000000
 training_frequency: 25
 
 use_grad_clip: True
 grad_clip_norm: 0.5
-eval_interval: 200000
+eval_interval: 100000
 test_episode: 5
 
 log_dir: './logs/masac/'
@@ -65,8 +65,8 @@ model_dir: './models/masac/'
 
 IL_mode: True
 IL_replay_buffer_dir: './scripts/IL_replay_buffer'
-IL_data: 'rewards1000.json'
-rep_factor: 50
+IL_data: 'reward.json'
+rep_factor: 100
 # my own env parameter
 args:
   embed_dim4neighbor: 8
@@ -80,5 +80,5 @@ args:
   communication_radius: 900
   perception_radius: 90
   col_dis: 5
-  decay_gamma: 0.8
+  decay_gamma: 0.95
   map_filename: 'NarrowCorridor_2'
