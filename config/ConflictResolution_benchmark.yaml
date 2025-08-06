@@ -41,32 +41,32 @@ use_parameter_sharing: True
 use_actions_mask: False
 
 seed: 1
-parallels: 32
+parallels: 64
 buffer_size: 64000000
 batch_size: 4096
-learning_rate_actor: 0.005 # learning rate for actor
-learning_rate_critic: 0.0005 # learning rate for critic
+learning_rate_actor: 0.001 # learning rate for actor
+learning_rate_critic: 0.0001 # learning rate for critic
 gamma: 0.95 # discount factor
 tau: 0.001 # soft update for target networks
 alpha: 0.01
 use_automatic_entropy_tuning: True
+
 start_training: 10000 # start training after n steps
-running_steps: 10000000
+running_steps: 20000000
 training_frequency: 32
+
 use_grad_clip: True
 grad_clip_norm: 0.5
 eval_interval: 100000
-test_episode: 1
+test_episode: 5
+
 log_dir: './logs/masac/'
 model_dir: './models/masac/'
 
-IL_mode: True
+IL_mode: False
 IL_replay_buffer_dir: './scripts/IL_replay_buffer'
 IL_data: 'reward.json'
 rep_factor: 100
-# save_path: 'C:/Users/pc/Desktop/PythonProject/ConflictResolution/all_train_data'
-save_path: '/home/shukun/python_project/ConflictResolution/all_train_data'
-method: 'MARL'
 # my own env parameter
 args:
   embed_dim4neighbor: 8

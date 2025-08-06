@@ -1,0 +1,101 @@
+'''
+Author: Shukun
+Date: 2025-06-16 19:11:30
+LastEditors: Shukun
+LastEditTime: 2025-06-16 19:22:34
+Description: Train my world on the ConflictResolution work
+'''
+import argparse
+import numpy as np
+from copy import deepcopy
+import os
+import sys
+from xuance.common import get_configs
+# 获取当前文件所在的目录
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# 返回上一级目录，即项目根目录
+project_root = os.path.abspath(os.path.join(current_dir, '..'))
+# 将项目根目录添加到 sys.path
+sys.path.append(project_root)
+from xuance.common import get_configs, recursive_dict_update
+from xuance.environment import make_envs
+from xuance.torch.utils.operations import set_seed
+from xuance.torch.agents import MASAC_Agents
+from config.ConflictResolutionEnv import MyNewMultiAgentEnv
+from xuance.environment import REGISTRY_MULTI_AGENT_ENV
+REGISTRY_MULTI_AGENT_ENV['ConflictResolutionEnv'] = MyNewMultiAgentEnv
+
+def parse_args():
+    parser = argparse.ArgumentParser("Example of XuanCe: MASAC for MPE.")
+    # parser.add_argument("--env-id", type=str, default="simple_spread_v3")
+    parser.add_argument("--test", type=int, default=0)
+    parser.add_argument("--benchmark", type=int, default=1)
+
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    parser = parse_args()
+    configs_dict = get_configs(file_dir="config/ConflictResolution_benchmark.yaml")
+    configs_dict = recursive_dict_update(configs_dict, parser.__dict__)
+    configs = argparse.Namespace(**configs_dict)
+    # 如果 config.args 是一个 dict，就手动转换一次
+    if isinstance(configs.args, dict):
+        configs.args = argparse.Namespace(**configs.args)
+    set_seed(configs.seed)
+    envs = make_envs(configs)
+    Agent = MASAC_Agents(config=configs, envs=envs)
+    train_information = {"Deep learning toolbox": configs.dl_toolbox,
+                         "Calculating device": configs.device,
+                         "Algorithm": configs.agent,
+                         "Environment": configs.env_name,
+                         "Scenario": configs.env_id}
+    for k, v in train_information.items():
+        print(f"{k}: {v}")
+
+    if configs.benchmark:
+        def env_fn():
+            configs_test = deepcopy(configs)
+            configs_test.parallels = configs_test.test_episode
+            return make_envs(configs_test)
+        if configs.legacy:
+            Agent.load_model(path=Agent.model_dir_load)
+        train_steps = configs.running_steps // configs.parallels
+        eval_interval = configs.eval_interval // configs.parallels
+        test_episode = configs.test_episode
+        num_epoch = int(train_steps / eval_interval)
+
+        test_scores = Agent.test(env_fn, test_episode)
+        Agent.save_model(model_name="best_model.pth")
+        best_scores_info = {"mean": np.mean(test_scores),
+                            "std": np.std(test_scores),
+                            "step": Agent.current_step}
+        for i_epoch in range(num_epoch):
+            print("Epoch: %d/%d:" % (i_epoch, num_epoch))
+            Agent.train(eval_interval)
+            test_scores = Agent.test(env_fn, test_episode)
+            if np.mean(test_scores) > best_scores_info["mean"]:
+                best_scores_info = {"mean": np.mean(test_scores),
+                                    "std": np.std(test_scores),
+                                    "step": Agent.current_step}
+                # save best model
+                Agent.save_model(model_name="best_model.pth")
+        # end benchmarking
+        print("Best Model Score: %.2f, std=%.2f" % (best_scores_info["mean"], best_scores_info["std"]))
+    else:
+        if configs.test:
+            def env_fn():
+                configs.parallels = configs.test_episode
+                return make_envs(configs)
+
+
+            Agent.load_model(path=Agent.model_dir_load)
+            scores = Agent.test(env_fn, configs.test_episode)
+            print(f"Mean Score: {np.mean(scores)}, Std: {np.std(scores)}")
+            print("Finish testing.")
+        else:
+            Agent.train(configs.running_steps // configs.parallels)
+            Agent.save_model("final_train_model.pth")
+            print("Finish training!")
+
+    Agent.finish()
