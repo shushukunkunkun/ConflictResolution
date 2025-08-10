@@ -2,7 +2,7 @@
 Author: Shukun
 Date: 2024-12-30 18:36:04
 LastEditors: Shukun
-LastEditTime: 2025-04-22 13:15:28
+LastEditTime: 2025-08-06 21:36:22
 Description: Decentralized MPC + MARL
 '''
 import os
@@ -28,6 +28,7 @@ class Args:
     def __init__(self, method='None'):
         # 公有基础属性
         self.method = method
+        self.Method = 'DMPC'
         self.n_episodes = 1
         self.max_episode_len = 1200  # 单次训练最多步数
         self.train_step = 0
@@ -51,11 +52,13 @@ class Args:
         self.ShowMe = True
         self.The_Chosen_One = False
         self.map_filename = "NarrowCorridor_2"
+        # self.map_filename = "NarrowCorridor_3"
         self.use_wandb = False  # 控制是否上传数据至W&B
         # 检查CUDA是否可用并设置设备
         self.cuda = torch.cuda.is_available()
         self.device = torch.device("cuda" if self.cuda else "cpu")
-        self.path_on_f_drive = fr"C:\Users\pc\Desktop\PythonProject\ConflictResolution\all_train_data\{self.map_filename}_train_data"
+        # self.path_on_f_drive = fr"C:\Users\pc\Desktop\PythonProject\ConflictResolution\all_train_data\{self.map_filename}_train_data\{self.Method}"
+        self.path_on_f_drive = fr'\home\shukun\python_project\ConflictResolution\all_train_data\{self.map_filename}_train_data\{self.Method}'
         # 根据 method 参数设置特定属性
         if self.method == 'qmix':
             # QMIX特有的属性
@@ -77,6 +80,7 @@ class Args:
 
 def main():
     args = Args('None')
+    robots_data = []
     # 环境初始化
     if args.use_wandb:
         wandb.login(key="0a09fce74e57f774b4cd367a096ffe6d7025a427")
@@ -105,6 +109,16 @@ def main():
                 for example , in qmix method, it refers to the one_hot encoding"""
                 for agent_id, agent in enumerate(env.agents):
                     agent_state = agent.get_state()
+                    robot_data = []
+                    for robot in agent.robots:
+                        robot_info = {
+                            'id': robot.id,
+                            'position': robot.position.tolist(),
+                            'velocity': robot.velocity.tolist(),
+                            'acceleration': robot.acceleration.tolist() 
+                        }
+                        robot_data.append(robot_info)
+                    robots_data.append(robot_data)
                     action = agent.select_action(
                         agent_state,
                         network if args.method != 'None' else None,
@@ -162,7 +176,8 @@ def main():
         traceback.print_exc()
     finally:
         save_training_data(args.path_on_f_drive, replay_buffer,
-                           args.map_filename, args.method, env)
+                           args.map_filename, args.method, env, robots_data)
+        
         print("训练完成。")
         if args.use_wandb:
             wandb.finish()

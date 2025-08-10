@@ -2,7 +2,7 @@
 Author: Shukun
 Date: 2025-03-28 15:44:06
 LastEditors: Shukun
-LastEditTime: 2025-08-04 16:41:20
+LastEditTime: 2025-08-10 19:41:35
 Description: test the new personality
 '''
 import json
@@ -57,6 +57,7 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
         self.args.obstacle_coor = obstacle_coor
         self.env_id = env_config.env_id
         self.num_agents = 4
+        self.num_robots = 10
         # self.neighbor_attentionnetwork = AttentionNetwork(6, self.args.embed_dim4neighbor, self.args.num_heads4neighbor, 6)
         # self.obs_attentionnetwork = AttentionNetwork(2, self.args.embed_dim4obs, self.args.num_heads4obs, 2)
         self.agents = [f"agent_{i}" for i in range(self.num_agents)]
@@ -103,6 +104,18 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
             self.agents_reward_list = [
             [ {} for _ in range(self.num_agents) ]
             for _ in range(self.max_episode_steps)]
+            if self.env_config.with_robot:
+                from basic_class.GroundRobot import GroundRobot
+                np.random.seed(1)
+                self.robots = {}
+                for uav_index in range(self.num_agents):
+                    ground_robots = []
+                    for i in range(self.num_robots):
+                        position = np.random.uniform(low=-20.0, high=20.0, size=2) + self.args.start_point[uav_index]
+                        robot = GroundRobot(self.args.obstacle_coor, robot_id= uav_index * self.num_robots + i, position=position)
+                        ground_robots.append(robot)
+                    self.robots[f'agent{uav_index}'] = ground_robots
+                self.robots_state_whole_process = np.zeros((self.max_episode_steps,self.num_agents*self.num_robots,6)) #六个维度依次为 vx,vy,x,y,ax,ay
     def pay_attention(self):
         "Updating the Observation of Each Agent Using the Attention Mechanism"
         "Neighbor_Attention"
@@ -236,11 +249,25 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
         # 首先根据Action进行状态更新
         if self.env_config.render == True:
             self.render(self.env_config.render_mode)
-        self._current_step += 1
         # 第一步更新自身状态
         self.update_agents_state(action_dict)
         # 第二步根据自身状态更新hidden_state(incluidng obs_hidden_state and neighbor_state)
         self.pay_attention()
+        if self.env_config.with_robot and self.env_config.test_mode:
+            for ii in range(self.num_agents):
+                for i in range(self.num_robots):
+                    robot = self.robots[f'agent{ii}'][i]
+                    all_robots = [r for robots in self.robots.values() for r in robots]
+                    robot.update_control_input(all_robots,
+                                               self.robots[f'agent{ii}'],
+                                               self.agents_state[f'agent_{ii}'][2:4],
+                                               self.agents_state[f'agent_{ii}'][0:2],
+                                               self.agents_state[f'agent_{ii}'][4],
+                                               900/self.agents_state[f'agent_{ii}'][4],
+                                               self.agents_state[f'agent_{ii}'][5],
+                                               self.sampling_time
+                                               )
+                    robot.update_state(self.sampling_time)
         # 第三步根据自身状态组合self.obs_state
         self.agents_obs = {agent: np.concatenate((np.array(normalization(self.agents_state[agent], self.args.normalization_scale4state, np.array([0,0,-self.args.target_point[i][0],-self.args.target_point[i][1],0,0]))),self.neighbor_state[agent],self.obs_state[agent])) for i,agent in enumerate(self.agents)}
         
@@ -249,6 +276,7 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
         terminated = {agent: True if self.agents_working_state[agent] != 'working' else False for agent in self.agents}
         truncated = False if self._current_step < self.max_episode_steps else True
         info = {}
+        self._current_step += 1
         return observation, rewards, terminated, truncated, info
     def calculate_reward(self,agent):
         "Required Information Representation"
@@ -265,7 +293,7 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
         dis2obstacle = self.agents_dis2obs[agent]
         last_dis2obstacle = self.agents_last_dis2obs[agent]
         target = self.args.target_point[index].flatten() if hasattr(self.args.target_point[index], 'flatten') else self.args.target_point[index]
-        alpha, beta, gamma, kappa, epsilon = 1, 5, 3, 1, 1  # 奖励权重
+        alpha, beta, gamma, kappa, epsilon = 1, 3, 3, 1, 1  # 奖励权重
         normilized_scale = 100
         if self.agents_working_state[agent] != 'working' and self.env_config.test_mode:
             self.agents_reward_list[self._current_step][index] = {
@@ -385,6 +413,10 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
             if self.env_config.test_mode:
                 for i,agent in enumerate(self.agents):
                     self.agents_state_whole_process[self._current_step,i,:] = np.concatenate((self.agents_state[agent],np.array([acc_x , acc_y])))
+                    if self.env_config.with_robot:
+                        for ii in range(self.num_robots):
+                            pos_r, vel_r, acc_r = self.robots[f'agent{i}'][ii].position,self.robots[f'agent{i}'][ii].velocity,self.robots[f'agent{i}'][ii].acceleration
+                            self.robots_state_whole_process[self._current_step,i*self.num_robots+ii,:] = np.concatenate((pos_r,vel_r,acc_r))
     def render(self, mode='human', close=False):
         """
         Renders the current state of the environment, drawing obstacles, each agent's ellipse, and its target point (color-consistent).
@@ -472,6 +504,7 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
         map_filename = self.env_config.args.map_filename
         path_on_f_drive = fr"{self.env_config.save_path}/{map_filename}_train_data/{self.env_config.method}"
         filename_state = f"all_episodes_data_{map_filename}.json"
+        filename_robots = f"{map_filename}_robots.json"
         filename_reward = f"reward_data_{map_filename}.json"
         filename_obs = f"{map_filename}_obs.json"
         filename_target = f"{map_filename}_target.json"
@@ -481,6 +514,7 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
         if os.path.exists(path_on_f_drive):
             # 如果 F 盘路径存在，则保存到 F 盘
             save_path_state = os.path.join(path_on_f_drive, filename_state)
+            save_path_robots = os.path.join(path_on_f_drive, filename_robots)
             save_path_obs = os.path.join(path_on_f_drive, filename_obs)
             save_path_target = os.path.join(path_on_f_drive, filename_target)
             save_path_reward = os.path.join(path_on_f_drive, filename_reward)
@@ -488,6 +522,7 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
         else:
             # 如果 F 盘路径不存在，则保存到当前目录
             save_path_state = os.path.join(default_save_dir, filename_state)
+            save_path_robots = os.path.join(default_save_dir, filename_robots)
             save_path_obs = os.path.join(default_save_dir, filename_obs)
             save_path_target = os.path.join(default_save_dir, filename_target)
             save_path_reward = os.path.join(default_save_dir, filename_reward)
@@ -499,6 +534,8 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
         
         # 获取所有经验数据并转换格式
         state_data = numpy_to_list(self.agents_state_whole_process)
+        if self.env_config.with_robot:
+            robots_data = numpy_to_list(self.robots_state_whole_process)
         reward_data = numpy_to_list(self.agents_reward_list)
         target_data = numpy_to_list(self.args.target_point)
         obs_data = numpy_to_list(self.args.obstacle_coor)
@@ -511,7 +548,9 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
             json.dump(obs_data, f)
         with open(save_path_target, "w") as f:
             json.dump(target_data, f)
-
+        if self.env_config.with_robot:
+            with open(save_path_robots, "w") as f:
+                json.dump(robots_data, f)  
         print(f"数据已保存到 {save_path_state}")
     def close(self):
         if self.env_config.test_mode:
@@ -522,5 +561,12 @@ class MyNewMultiAgentEnv(RawMultiAgentEnv):
                 if last_valid + 1 < self.agents_state_whole_process.shape[0]:
                     self.agents_state_whole_process[last_valid+1:] = (
                         self.agents_state_whole_process[last_valid])
+                if self.env_config.with_robot:
+                    mask = np.any(self.robots_state_whole_process != 0, axis=(1,2))
+                    if np.any(mask):
+                        last_valid = np.where(mask)[0][-1]
+                        if last_valid + 1 < self.robots_state_whole_process.shape[0]:
+                            self.robots_state_whole_process[last_valid+1:] = (
+                                self.robots_state_whole_process[last_valid])
             self.save_data()
         return

@@ -3,7 +3,7 @@
 Author: Shukun
 Date: 2025-03-28 15:40:01
 LastEditors: Shukun
-LastEditTime: 2025-08-06 22:46:13
+LastEditTime: 2025-08-10 20:40:41
 Description: Train my world on the ConflictResolution work
 '''
 import argparse
@@ -29,8 +29,8 @@ REGISTRY_MULTI_AGENT_ENV['ConflictResolutionEnv'] = MyNewMultiAgentEnv
 def parse_args():
     parser = argparse.ArgumentParser("Example of XuanCe: MASAC for MPE.")
     # parser.add_argument("--env-id", type=str, default="simple_spread_v3")
-    parser.add_argument("--test", type=int, default=0)
-    parser.add_argument("--benchmark", type=int, default=1)
+    parser.add_argument("--test", type=int, default=1)
+    parser.add_argument("--benchmark", type=int, default=0)
 
     return parser.parse_args()
 
@@ -89,7 +89,7 @@ if __name__ == "__main__":
                 configs.parallels = configs.test_episode
                 return make_envs(configs)
             # envs = env_fn()
-            Agent.load_model(path=Agent.model_dir_load)
+            Agent.load_model(path=Agent.model_dir_load,model=configs.method)
             scores = Agent.test(env_fn, configs.test_episode)
             # envs.save_data()
             print(f"Mean Score: {np.mean(scores)}, Std: {np.std(scores)}")

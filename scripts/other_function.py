@@ -1407,7 +1407,7 @@ def preprocessing_episode_data(args, episode_data, episode_rewards):
 
 
 def save_training_data(path_on_f_drive, replay_buffer, map_filename, method,
-                       env):
+                       env,robots_data):
     """
     保存训练数据到指定目录。如果指定目录不存在，则保存到默认目录。
     
@@ -1425,20 +1425,22 @@ def save_training_data(path_on_f_drive, replay_buffer, map_filename, method,
         filename = f"all_episodes_data_{map_filename}.json"
     filename_obs = f"{map_filename}_obs.json"
     filename_target = f"{map_filename}_target.json"
+    filename_robots = f"{map_filename}_robots.json"
     # 默认保存目录
     default_save_dir = "all_train_data"
-
     if os.path.exists(path_on_f_drive):
         # 如果 F 盘路径存在，则保存到 F 盘
         save_path = os.path.join(path_on_f_drive, filename)
         save_path_obs = os.path.join(path_on_f_drive, filename_obs)
         save_path_target = os.path.join(path_on_f_drive, filename_target)
+        save_path_robots = os.path.join(path_on_f_drive, filename_robots)
         print(f"Saving data to {save_path} on F drive.")
     else:
         # 如果 F 盘路径不存在，则保存到当前目录
         save_path = os.path.join(default_save_dir, filename)
         save_path_obs = os.path.join(default_save_dir, filename_obs)
         save_path_target = os.path.join(default_save_dir, filename_target)
+        save_path_robots = os.path.join(default_save_dir, filename_robots)
         print(
             f"{path_on_f_drive} path not found. Saving data to {save_path} in current directory."
         )
@@ -1457,6 +1459,8 @@ def save_training_data(path_on_f_drive, replay_buffer, map_filename, method,
         json.dump(obs_data, f)
     with open(save_path_target, "w") as f:
         json.dump(target_data, f)
+    with open(save_path_robots, "w") as f:
+        json.dump(robots_data, f)  
     print(f"数据已保存到 {save_path}")
 def normalization(original_data, scale, addition):
 

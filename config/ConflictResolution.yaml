@@ -5,7 +5,7 @@ wandb_user_name: 'shushukunkunkun'
 render: False #  True False
 render_mode: 'rgb_array' # Choices: 'human', 'rgb_array'.
 fps: 50
-test_mode: False # True False
+test_mode: True # True False
 device: 'cuda:0' # Choose an calculating device. PyTorch: "cpu", "cuda:0"; TensorFlow: "cpu"/"CPU", "gpu"/"GPU"; MindSpore: "CPU", "GPU", "Ascend", "Davinci".
 distributed_training: False # Whether to use multi-GPU for distributed training.
 master_port: '12355' # The master port for current experiment when use distributed training.
@@ -44,14 +44,14 @@ seed: 1
 parallels: 32
 buffer_size: 64000000
 batch_size: 4096
-learning_rate_actor: 0.005 # learning rate for actor
-learning_rate_critic: 0.0005 # learning rate for critic
+learning_rate_actor: 0.001 # learning rate for actor
+learning_rate_critic: 0.0001 # learning rate for critic
 gamma: 0.95 # discount factor
 tau: 0.001 # soft update for target networks
 alpha: 0.01
 use_automatic_entropy_tuning: True
 start_training: 10000 # start training after n steps
-running_steps: 10000000
+running_steps: 8000000
 training_frequency: 32
 use_grad_clip: True
 grad_clip_norm: 0.5
@@ -60,13 +60,14 @@ test_episode: 1
 log_dir: './logs/masac/'
 model_dir: './models/masac/'
 
-IL_mode: True
+IL_mode: False
 IL_replay_buffer_dir: './scripts/IL_replay_buffer'
 IL_data: 'reward.json'
 rep_factor: 100
 # save_path: 'C:/Users/pc/Desktop/PythonProject/ConflictResolution/all_train_data'
 save_path: '/home/shukun/python_project/ConflictResolution/all_train_data'
-method: 'MARL'
+method: 'MARL' #'IL' 'DMPC'
+with_robot: True
 # my own env parameter
 args:
   embed_dim4neighbor: 8

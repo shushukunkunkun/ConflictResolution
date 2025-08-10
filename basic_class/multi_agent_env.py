@@ -32,46 +32,62 @@ class MultiAgentEnv:
         self.col_dis = 5
         # self.start_point = np.array([[200, 60], [200, -60], [200, 0]])
         # self.target_point = np.array([[900, 60], [900, -60], [900, 0]])
-        self.start_point = np.array([[50, 750], [750, 750], [50, 50], [750, 50]])
-        self.target_point = np.array([[500, 300], [300, 300], [500, 500], [300, 500]])
+
         self.device = args.device
         if args.map_filename == "NarrowCorridor_3":
-            line1_points = [(-50, -100), (850, -100)]
-            # line2_points = [(-50, 100), (850, 100)]
-            line2_points = [
-                (-50, 100),
-                (250, 100),
-                (375, 0),
-                (575, 0),
-                (700, 100),
-                (850, 100),
-            ]
+            self.start_point = np.array([[50, 350], [350, 350], [50, 50], [350, 50]])
+            self.target_point = np.array([[250, 150], [150, 150], [250, 250], [150, 250]])
+            line1_points = discretize_line([
+                    (100, 10),
+                    (300, 10),
+                    (250, 125),
+                    (75, 75),
+                    (100, 10)
+                ])
+
+            Square1 = discretize_square([350, 150], 15)
+            Square2 = discretize_square([310, 225], 40)
+            Square3 = discretize_square([350, 300], 15)
+
+            Triangle = discretize_line([
+                (200, 300),
+                (300, 375),
+                (100, 375),
+                (200, 300)
+            ])
+
+            Circle1 = discretize_circle([50, 275], 30)
+            Circle2 = discretize_circle([75, 175], 25)
+
+            Wall = discretize_line([(0, 0), (0, 400), (400, 400), (400, 0), (0, 0)])
+            obstacle_coor = np.vstack(
+            (
+                line1_points,
+                Square1,
+                Square2,
+                Square3,
+                Triangle,
+                Circle1,
+                Circle2,
+                Wall,
+            )
+                )
         if args.map_filename == "NarrowCorridor_2":
-            # line1_points = [(-50, -100), (850, -100)]
-            # line2_points = [(-50, 100), (850, 100)]
             # 离散化各个障碍物的点
+            self.start_point = np.array([[50, 750], [750, 750], [50, 50], [750, 50]])
+            self.target_point = np.array([[500, 300], [300, 300], [500, 500], [300, 500]])
             line1_points = discretize_line(
                 [(200, 20), (600, 20), (500, 250), (150, 150), (200, 20)]
             )
-            Square1 = discretize_square([700, 300], 30)
+            Square1 = discretize_square([700, 150], 30)
             Square2 = discretize_square([620, 450], 80)
-            Square3 = discretize_square([700, 600], 30)
+            Square3 = discretize_square([650, 650], 50)
             Triangle = discretize_line([(400, 600), (600, 750), (200, 750), (400, 600)])
             Circle1 = discretize_circle([100, 550], 60)
             Circle2 = discretize_circle([150, 350], 50)
             Wall = discretize_line([(0, 0), (0, 800), (800, 800), (800, 0), (0, 0)])
-            obstacle_coor = np.vstack(
-                (
-                    line1_points,
-                    Square1,
-                    Square2,
-                    Square3,
-                    Triangle,
-                    Circle1,
-                    Circle2,
-                    Wall,
-                )
-            )
+            # 合并所有障碍物点
+            obstacle_coor = np.vstack((line1_points, Square1, Square2, Square3, Triangle, Circle1, Circle2, Wall))
         self.method = args.method
         # 离散化折线
         self.obstacle_coor = obstacle_coor
@@ -84,18 +100,25 @@ class MultiAgentEnv:
                 velocity=[0, 0],
                 target_pos=self.target_point[i],
                 obs_coor=self.obstacle_coor,  # 关键字参数
+                map = args.map_filename,
                 device=torch.device("cuda"),
             )
             for i in range(args.n_agents)
         ]
         if self.method == "None":
-            self.normalization_scale = np.array([-5, -5, -90, -90, 60, math.pi / 2])
-            self.normalization_scale4state = np.array(
-                [5, 5, -900, -900, 60, math.pi / 2]
-            )
+            if args.map_filename == "NarrowCorridor_2":
+                self.normalization_scale = np.array([-5, -5, -90, -90, 60, math.pi / 2])
+                self.normalization_scale4state = np.array(
+                    [5, 5, -900, -900, 60, math.pi / 2]
+                )
+            elif args.map_filename == "NarrowCorridor_3":
+                self.normalization_scale = np.array([-5, -5, -90, -90, 40, math.pi / 2])
+                self.normalization_scale4state = np.array(
+                    [5, 5, -900, -900, 40, math.pi / 2]
+                )
             self.num_agents = 4
             self.uavs = [f"agent_{i}" for i in range(self.num_agents)]
-            self.agents_dis2obs = {agent: 0.0 for i, agent in enumerate(self.uavs)}
+            self.agents_dis2obs = {agent: 30.0 for i, agent in enumerate(self.uavs)}
             self.agents_working_state = {agent: "working" for agent in self.uavs}
             self.nearest_neighbor = {agent: None for i, agent in enumerate(self.uavs)}
             self.agents_last_dis2obs = self.agents_dis2obs.copy()
@@ -104,13 +127,13 @@ class MultiAgentEnv:
                     (
                         np.array([0.0, 0.0]),
                         self.start_point[i].flatten(),
-                        np.array([30.0, 0.0]),
+                        np.array([math.sqrt(self.agents[0].ellipse_area/math.pi), 0.0]),
                     )
                 )
                 for i, agent in enumerate(self.uavs)
             }
             self.agents_last_state = self.agents_state.copy()
-            self.neighbor_state = {agent: np.zeros(6) for agent in self.uavs}
+            self.neighbor_state = {agent: np.zeros(12) for agent in self.uavs}
             self.obs_state = {agent: np.zeros(2) for agent in self.uavs}
             self.agents_obs = {
                 agent: np.concatenate(
@@ -137,9 +160,9 @@ class MultiAgentEnv:
             }
             # 每个智能体的观测为14维度  包括 self-state[Velocity,Position,Ellipse-length,Theta],neighbor-visablestate[Relative-velocity,Relative-position,Ellipse-length,Theta],obs[Position]
             # 定义单个智能体的观测低维和高维边界
-            self.max_episode_steps = 800
+            self.max_episode_steps = 1200
             self.sampling_time = float(0.2)
-            self.decay_gamma = 0.8
+            self.decay_gamma = 0.95
     def reset(self):
         for i, agent in enumerate(self.agents):
             agent.reset(self.start_point[i])
@@ -199,7 +222,7 @@ class MultiAgentEnv:
             if not done:
                 if all(
                     np.linalg.norm(agent.position - agent.target_pos)
-                    <= (self.col_dis + 15)
+                    <= (self.col_dis + 25)
                     for agent in self.agents
                 ):
                     done = True
@@ -375,7 +398,7 @@ class MultiAgentEnv:
             dis2obstacle = self.agents_dis2obs[agent]
             last_dis2obstacle = self.agents_last_dis2obs[agent]
             target = self.target_point[index].flatten() if hasattr(self.target_point[index], 'flatten') else self.target_point[index]
-            alpha, beta, gamma, kappa, epsilon = 1, 1.5, 1, 1, 1  # 奖励权重
+            alpha, beta, gamma, kappa, epsilon = 1, 5, 3, 1, 1  # 奖励权重
             normilized_scale = 100
             if self.agents_working_state[agent] != 'working':
                 return 0
@@ -390,20 +413,20 @@ class MultiAgentEnv:
            
             # ellipse_change_penalty = -10 * abs(ellipse_length_current - ellipse_length_last) / normilized_scale
             ellipse_change_penalty_now = -abs(ellipse_length_current - (900/ellipse_length_current))/45
-            ellipse_change_penalty_last = -abs(ellipse_length_last - (900/ellipse_length_last))/45
-            ellipse_change_penalty = self.decay_gamma * ellipse_change_penalty_now - ellipse_change_penalty_last  # reward shaping
-            # ellipse_change_penalty = ellipse_change_penalty_now
-            theta_change_penalty = -2*((theta_current - theta_last)**2)
+            # ellipse_change_penalty_last = -abs(ellipse_length_last - (900/ellipse_length_last))/45
+            # ellipse_change_penalty = self.decay_gamma * ellipse_change_penalty_now - ellipse_change_penalty_last  # reward shaping
+            ellipse_change_penalty = ellipse_change_penalty_now
+            theta_change_penalty = -2*(abs(theta_current - theta_last))/np.pi
             
             "(3) Outside collision penalty"
             collision_penalty_now = 0
             collision_penalty_last = 0
             if dis2obstacle  <= 10:
-                collision_penalty_now = -1*((10 - dis2obstacle)**2) / normilized_scale
+                collision_penalty_now = -10*((10 - dis2obstacle)**2) / normilized_scale
             if last_dis2obstacle <= 10:
-                collision_penalty_last = (-1 * (10 - last_dis2obstacle)**2) / normilized_scale
-            if  is_collision(self.agents_state[agent],self.obstacle_coor) == True:
-                collision_penalty = -2000 / normilized_scale
+                collision_penalty_last = (-10 * (10 - last_dis2obstacle)**2) / normilized_scale
+            if  is_collision(self.agents[0].ellipse_area,self.agents_state[agent],self.obstacle_coor) == True:
+                collision_penalty = -1000 / normilized_scale
                 state = 'dead'
             else:
                 collision_penalty = self.decay_gamma * collision_penalty_now - collision_penalty_last  # reward shaping
@@ -413,24 +436,21 @@ class MultiAgentEnv:
             other_agent = self.nearest_neighbor[agent]
             overlap_penalty = 0
             if other_agent is not None:
-                # min_dis_now = compute_shortest_distance(self.agents_state[agent], self.agents_state[other_agent])
-                # min_dis_last = compute_shortest_distance(self.agents_last_state[agent], self.agents_last_state[other_agent])
-                # overlap_penalty_last = 0
-                # overlap_penalty_now = 0
-                # if min_dis_now <= 10:
-                #     overlap_penalty_now = (-2 *(10 - min_dis_now)**2) / normilized_scale
-                # if min_dis_last <= 10:
-                #     overlap_penalty_last = (-2 *(10 - min_dis_last)**2) / normilized_scale
-                # overlap_penalty = self.decay_gamma * overlap_penalty_now - overlap_penalty_last  # reward shaping
-                overlap, intersection_area = is_overlap(self.agents_state[agent],self.agents_state[other_agent])
+                overlap, intersection_area = is_overlap(self.agents[0].ellipse_area,self.agents_state[agent],self.agents_state[other_agent])
                 if  overlap:
                     "If they overlap, the penalties should be added to the penalties related to the charging area"
-                    overlap_penalty = -(intersection_area / (900 * np.pi)) * 500 / normilized_scale
-                    # overlap_penalty = -1
+                    if intersection_area <= (100 * np.pi):
+                        overlap_penalty = -2
+                    elif intersection_area >(100 * np.pi) and intersection_area <= (450 * np.pi):
+                        overlap_penalty = -5
+                    elif intersection_area >(450 * np.pi):
+                        overlap_penalty = -10
             if self.agents_working_state[agent] == 'working':
                 reward = alpha * distance_reward + beta * ellipse_change_penalty + gamma * collision_penalty + kappa * overlap_penalty + epsilon * theta_change_penalty
             else:
                 reward = 0
+            if reward < -10:
+                print(f"agent{agent},reward:{reward},distance_reward:{alpha * distance_reward},ellipse_change_penalty:{beta * ellipse_change_penalty},collision_penalty{gamma * collision_penalty},  overlap_penalty:{kappa * overlap_penalty},theta_change_penalty:{epsilon * theta_change_penalty}")
             self.agents_working_state[agent] = state
         return reward
 
@@ -448,27 +468,49 @@ class MultiAgentEnv:
             pos_i = state_i[2:4]  # 这里假设位置存储在第 3 和第 4 个元素
             visible_neighbors = []
             min_neighbor_distance = float('inf')  # 初始化最近距离为无穷大
+            second_min_neighbor_distance = float('inf')
             neighbor_state = []
             # 遍历所有其他智能体，寻找邻居
             nearest_neighbor = None
-            for j, other_agent in enumerate(self.uavs):
-                if other_agent == agent:
-                    continue  # 忽略自己
-                state_j = self.agents_state[other_agent]
-                pos_j = state_j[2:4]
-                # 计算欧氏距离
-                distance = np.linalg.norm(pos_i - pos_j)              
-                # 如果距离小于等于感知半径，则认为 other_agent 是可见邻居
-                if distance <= self.agents[0].perception_radius:
-                    visible_neighbors.append(other_agent)
-                    if distance < min_neighbor_distance:
-                        min_neighbor_distance = distance
-                        nearest_neighbor = other_agent
+            second_nearest_neighbor = None
+            # 遍历所有其他智能体，寻找邻居
+        for j, other_agent in enumerate(self.uavs):
+            if other_agent == agent:
+                continue  # 忽略自己
+            state_j = self.agents_state[other_agent]
+            pos_j = state_j[2:4]
+            # 计算欧氏距离
+            distance = np.linalg.norm(pos_i - pos_j)
+
+            # 如果距离小于等于感知半径，则认为 other_agent 是可见邻居
+            if distance <= self.agents[0].perception_radius:
+                visible_neighbors.append(other_agent)
+
+                # 先检查是否比“当前最近”更近
+                if distance < min_neighbor_distance:
+                    # 原来的最近变成第二近
+                    second_min_neighbor_distance = min_neighbor_distance
+                    second_nearest_neighbor = nearest_neighbor
+
+                    # 更新最近
+                    min_neighbor_distance = distance
+                    nearest_neighbor = other_agent
+
+                # 否则，如果不属于最近并且比“当前第二近”更近，就更新第二近
+                elif distance < second_min_neighbor_distance:
+                    # 注意：这里不需要额外判断 distance == min_neighbor_distance，因为 distance < min 的情况已排除
+                    second_min_neighbor_distance = distance
+                    second_nearest_neighbor = other_agent
             self.nearest_neighbor[agent] = nearest_neighbor
-            if len(visible_neighbors) == 0:
-                neighbor_state = np.zeros(6)
-            else:
-                neighbor_state = normalization(self.agents_state[nearest_neighbor],self.normalization_scale,np.concatenate((-state_i[:4].flatten(), np.array([0, 0]))))
+            # 将考虑的邻居拓展为两个
+            nearest_neighbor_state = normalization(self.agents_state[nearest_neighbor],self.normalization_scale,np.concatenate((-state_i[:4].flatten(), np.array([0, 0])))) if nearest_neighbor != None else np.zeros(6)
+            second_nearest_neighbor_state = normalization(self.agents_state[second_nearest_neighbor],self.normalization_scale,np.concatenate((-state_i[:4].flatten(), np.array([0, 0])))) if second_nearest_neighbor != None else np.zeros(6)
+            neighbor_state = np.concatenate((nearest_neighbor_state,second_nearest_neighbor_state))
+            # # 将列表堆叠成一个张量：形状 (num_neighbors, 6)
+            # neighbor_tensor = torch.stack(neighbor_state, dim=0)
+            # # 增加 batch 维度，变成 (1, num_neighbors, 6)
+            # neighbor_tensor = neighbor_tensor.unsqueeze(0)
+            # # 使用注意力网络进行前向传播，输出形状为 (1, 6)
             self.neighbor_state[agent] = neighbor_state
         "Obstacle_Attention"
         for i, agent in enumerate(self.uavs):
@@ -491,7 +533,7 @@ class MultiAgentEnv:
             # 如果没有障碍物在范围内，使用一个零向量作为默认值
             if len(obstacles_in_range) == 0:
                 obstacle_state = np.zeros(2)
-                min_obs_distance = 0
+                min_obs_distance = 30
             else:
                 obstacle_state = normalization(min_obs,np.array([self.agents[0].perception_radius,self.agents[0].perception_radius]),-pos_i)
             self.agents_last_dis2obs[agent] = self.agents_dis2obs[agent]

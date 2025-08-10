@@ -1,70 +1,143 @@
+'''
+Author: Shukun
+Date: 2025-07-10 00:18:50
+LastEditors: Shukun
+LastEditTime: 2025-08-10 17:28:00
+Description: 请填写简介
+'''
 import numpy as np
+
+
 class GroundRobot:
-    def __init__(self, obstacle_coor, robot_id, position, velocity=np.zeros(2)):
+
+    def __init__(self, obstacle_coor, robot_id, position,
+                 velocity=np.zeros(2)):
         self.id = robot_id  # 机器人唯一标识符
         self.position = np.array(position, dtype=float)
         self.velocity = np.array(velocity, dtype=float)
+        self.target_pos = np.array([1300.0, -400.0])
+        self.acceleration = np.array([0.0, 0.0])
         self.assigned_uav = set()  # 当前分配的无人机
         self.previous_assigned_uav = set()
         self.epsilon = 0.1  # 归一化参数
         self.r = 8  # 期望距离
         self.r_cg = 12  # 通信半径
-        self.perception_r = 10  # 感知半径
+        self.perception_r = 10  #感知半径
         self.a = 30.0  # 椭圆长轴
         self.b = 30.0  # 椭圆短轴
         self.r_min = 1  # 最小距离
         self.alpha = 10000  # 形状控制权重
-        self.beta = 1.0  # 避碰控制权重
-        self.gamma = 1.0  # 编队控制权重
-        self.mu = 1.0  # 导航控制权重
-        self.tau = 20000000000000.0  # 避障控制权重
+        self.beta = 100.0  # 避碰控制权重1000
+        self.gamma = 10.0  # 编队控制权重
+        self.mu = 10.0  # 导航控制权重
+        self.tau = 20000  # 避障控制权重
         self.max_acc = 5.0  # 最大加速度
-        self.max_speed = 5.5  # 最大速度
+        self.max_speed = 5.0  # 最大速度
         self.obstacle = obstacle_coor
+        # self.alpha = 10000  # 形状控制权重
+        # self.beta = 1000.0  # 避碰控制权重
+        # self.gamma = 10.0  # 编队控制权重
+        # self.mu = 10.0  # 导航控制权重
+        # self.tau = 20000  # 避障控制权重
 
-    def update_control_input(self, group_robots, x_c, v_c, x_axis, y_axis, theta, dt):
+    def update_control_input(self, all_robots, group_robots, x_c, v_c, x_axis,
+                             y_axis, theta, dt):
         """更新机器人的速度，根据各控制力的综合作用"""
         # 判断是否有邻居
         has_neighbor = len(group_robots) > 1  # 自己也在 group_robots 中
         # 判断是否超出边界
         x_diff = self.position - x_c
-        is_outside = (x_diff[0] / self.a) ** 2 + ( x_diff[1] / self.b) ** 2 > 1  # 椭圆边界判断
+        is_outside = (x_diff[0] / self.a)**2 + (x_diff[1] /
+                                                self.b)**2 > 1  # 椭圆边界判断
 
-        u_p = (
-            self.shape_control(x_c, x_axis, y_axis, theta)
-            if is_outside
-            else np.zeros(2))
-        u_Q = self.collision_avoidance(group_robots)
-        u_n = self.formation_control(group_robots) if not is_outside else np.zeros(2)
+        u_p = self.shape_control(x_c, x_axis, y_axis,
+                                 theta) if is_outside else np.zeros(2)
+        u_Q = self.collision_avoidance(all_robots)
+        u_n = self.formation_control(
+            group_robots) if not has_neighbor else np.zeros(2)
         u_c = self.navigation_control(x_c, v_c)
         u_obs = self.obstacle_avoidance()
-        if np.linalg.norm(u_obs) != 0:
-            print(f"形状{u_p}，邻居避障{u_Q},编队{u_n},导航{u_c},避障{u_obs}")
-        if not has_neighbor and is_outside:
-            # 无邻居且超出边界
-            u_total = self.alpha * u_p + self.mu * u_c + self.tau * u_obs
-        elif has_neighbor and is_outside:
-            # 有邻居且超出边界
-            u_total = (self.alpha * u_p + self.mu * u_c + self.beta * u_Q + self.tau * u_obs )
-        else:
-            # 在边界内
-            u_total = (self.gamma * u_n + self.mu * u_c + self.beta * u_Q + self.tau * u_obs )
+        # if np.linalg.norm(u_obs) != 0:
+        #     print(f'形状{u_p}，邻居避障{u_Q},编队{u_n},导航{u_c},避障{u_obs}')
+
+        u_total = (self.gamma * u_n + self.mu * u_c + self.beta * u_Q +
+                       self.tau * u_obs + self.alpha * u_p )
+
+        # print(f'椭圆力{u_p},内部避碰{u_Q},队形{u_n},导航{u_c},外部避障{u_obs}')
+        # 确保 u_total 的范数不超过 self.max_acc
+        if np.linalg.norm(u_total) > self.max_acc:
+            u_total = u_total * (self.max_acc / np.linalg.norm(u_total))
+
+        # 更新速度并确保速度的范数不超过 self.max_speed
+        self.acceleration = u_total
+        new_velocity = self.velocity + u_total * dt
+        if np.linalg.norm(new_velocity) > self.max_speed:
+            new_velocity = new_velocity * (self.max_speed /
+                                           np.linalg.norm(new_velocity))
+        self.velocity = new_velocity
+
+    def Leader_Follower_control(self, all_robots, group_robots, x_c, v_c,
+                                 dt):
+        """更新机器人的速度，根据各控制力的综合作用"""
+        # 判断是否有邻居
+        has_neighbor = len(group_robots) > 1  # 自己也在 group_robots 中
+        # 判断是否超出边界
+        x_diff = self.position - x_c
+        is_outside = (x_diff[0] / self.a)**2 + (x_diff[1] /
+                                                self.b)**2 > 1  # 椭圆边界判断
+
+        # u_p = self.shape_control(x_c, x_axis, y_axis,
+        #                          theta) if is_outside else np.zeros(2)
+        u_p = np.zeros(2)  #不考虑椭圆的收敛
+        u_Q = self.collision_avoidance(all_robots)
+        u_n = self.formation_control(
+            group_robots) if not has_neighbor else np.zeros(2)
+        u_c = self.navigation_control(x_c, v_c)
+        u_obs = self.obstacle_avoidance()
+        # if np.linalg.norm(u_obs) != 0:
+        #     print(f'形状{u_p}，邻居避障{u_Q},编队{u_n},导航{u_c},避障{u_obs}')
+
+        u_total = (self.gamma * u_n + self.mu * u_c + self.beta * u_Q +
+                   self.tau * u_obs)
 
         # 确保 u_total 的范数不超过 self.max_acc
         if np.linalg.norm(u_total) > self.max_acc:
             u_total = u_total * (self.max_acc / np.linalg.norm(u_total))
 
         # 更新速度并确保速度的范数不超过 self.max_speed
+        self.acceleration = u_total
         new_velocity = self.velocity + u_total * dt
         if np.linalg.norm(new_velocity) > self.max_speed:
-            new_velocity = new_velocity * (
-                self.max_speed / np.linalg.norm(new_velocity)
-            )
+            new_velocity = new_velocity * (self.max_speed /
+                                           np.linalg.norm(new_velocity))
+        self.velocity = new_velocity
+
+    def Swarm_Only_Force(self, all_robots, group_robots, x_c, v_c, dt):
+        """更新机器人的速度，根据各控制力的综合作用"""
+        u_Q = self.collision_avoidance(all_robots)
+        u_n = self.formation_control(group_robots)
+        u_c = self.navigation_control(x_c, v_c)
+        u_obs = self.obstacle_avoidance()
+        # if np.linalg.norm(u_obs) != 0:
+        #     print(f'形状{u_p}，邻居避障{u_Q},编队{u_n},导航{u_c},避障{u_obs}')
+        u_total = (self.mu * u_c + self.beta * u_Q + self.tau * u_obs +
+                   self.gamma * u_n)
+        # 确保 u_total 的范数不超过 self.max_acc
+        if np.linalg.norm(u_total) > self.max_acc:
+            u_total = u_total * (self.max_acc / np.linalg.norm(u_total))
+
+        # 更新速度并确保速度的范数不超过 self.max_speed
+        self.acceleration = u_total
+        new_velocity = self.velocity + u_total * dt
+        if np.linalg.norm(new_velocity) > self.max_speed:
+            new_velocity = new_velocity * (self.max_speed /
+                                           np.linalg.norm(new_velocity))
         self.velocity = new_velocity
 
     def sigma_norm(self, z):
         """计算 sigma 范数"""
-        return (np.sqrt(1 + self.epsilon * np.linalg.norm(z) ** 2) - 1) / self.epsilon
+        return (np.sqrt(1 + self.epsilon * np.linalg.norm(z)**2) -
+                1) / self.epsilon
 
     def rho_h(self, z):
         """冲击函数"""
@@ -79,7 +152,7 @@ class GroundRobot:
     def phi(self, z, a=5, b=5):
         """动作函数"""
         c = abs(a - b) / np.sqrt(4 * a * b)
-        return 0.5 * ((a + b) * (z + c) / np.sqrt(1 + (z + c) ** 2) + (a - b))
+        return 0.5 * ((a + b) * (z + c) / np.sqrt(1 + (z + c)**2) + (a - b))
 
     def shape_control(self, x_c, x_axis, y_axis, theta):
         """计算形状控制力，保持机器人在椭圆形状的轨迹上"""
@@ -91,12 +164,10 @@ class GroundRobot:
         if f_Ge > 0:
             dh = 2 * h / self.a**2
             dg = 2 * g / self.b**2
-            grad_P = np.array(
-                [
-                    dh * np.cos(theta) - dg * np.sin(theta),
-                    dh * np.sin(theta) + dg * np.cos(theta),
-                ]
-            )
+            grad_P = np.array([
+                dh * np.cos(theta) - dg * np.sin(theta),
+                dh * np.sin(theta) + dg * np.cos(theta)
+            ])
             return -np.maximum(0, f_Ge) * grad_P
         return np.zeros(2)
 
@@ -108,9 +179,8 @@ class GroundRobot:
                 x_diff = other_robot.position - self.position
                 dist = np.linalg.norm(x_diff)
                 if dist < self.r:
-                    u_Q += -np.maximum(0, -np.log(dist**2) + np.log(self.r**2)) * (
-                        2 * x_diff / dist**2
-                    )
+                    u_Q += -np.maximum(0, -np.log(dist**2) + np.log(
+                        self.r**2)) * (2 * x_diff / dist**2)
         return u_Q
 
     def formation_control(self, group_robots):
@@ -123,14 +193,10 @@ class GroundRobot:
                 x_diff = other_robot.position - self.position
                 v_diff = other_robot.velocity - self.velocity
                 temp_z = self.sigma_norm(x_diff)
-                temp_para = self.rho_h(temp_z / self.sigma_norm(self.r_cg)) * self.phi(
-                    temp_z - self.sigma_norm(self.r)
-                )
-                force_position += (
-                    temp_para
-                    * x_diff
-                    / np.sqrt(1 + self.epsilon * np.linalg.norm(x_diff) ** 2)
-                )
+                temp_para = self.rho_h(temp_z / self.sigma_norm(
+                    self.r_cg)) * self.phi(temp_z - self.sigma_norm(self.r))
+                force_position += temp_para * x_diff / np.sqrt(
+                    1 + self.epsilon * np.linalg.norm(x_diff)**2)
                 sigma_dist = self.sigma_norm(x_diff)
                 a_ij = self.rho_h(sigma_dist / self.sigma_norm(self.r_cg))
                 force_velocity += a_ij * v_diff
@@ -140,8 +206,8 @@ class GroundRobot:
         """计算导航控制力"""
         c1, c2 = 30.0, 11.0
         return -c1 * (self.position - x_c) / np.sqrt(
-            1 + self.epsilon * np.linalg.norm(self.position - x_c) ** 2
-        ) - c2 * (self.velocity - v_c)
+            1 + self.epsilon * np.linalg.norm(self.position - x_c)**2) - c2 * (
+                self.velocity - v_c)
 
     def obstacle_avoidance(self):
         """计算避障控制力"""
